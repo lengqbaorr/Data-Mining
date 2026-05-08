@@ -1,0 +1,6 @@
+max_rul: 125
+ema_span: 10
+window_size: 15
+shift_size: 10
+corr_threshold: 0.95
+num_regimes: 6

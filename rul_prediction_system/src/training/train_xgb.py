@@ -1,0 +1,229 @@
+from sklearn.model_selection import GroupKFold
+
+from src.data.loader import load_dataset
+from src.data.labeling import add_piecewise_rul
+
+from src.preprocessing.pipeline import CMAPSSPreprocessor
+
+from src.training.tuning import tune_xgb
+from src.training.trainer import train_final_model
+from src.training.evaluate import (
+    evaluate_model,
+    plot_predictions,
+    get_feature_importance
+)
+
+from src.utils.config import load_config
+from src.utils.io import (
+    save_pickle,
+    save_json
+)
+
+
+import warnings
+
+from pandas.errors import PerformanceWarning
+from scipy.stats import ConstantInputWarning
+
+import os
+
+
+warnings.filterwarnings(
+    "ignore",
+    category=PerformanceWarning
+)
+
+warnings.filterwarnings(
+    "ignore",
+    category=ConstantInputWarning
+)
+
+
+# =========================================================
+# CONFIG
+# =========================================================
+
+DATA_DIR = 'CMaps'
+FD_NAME = 'FD001'
+
+config = load_config(
+    f'configs/{FD_NAME.lower()}.yaml'
+)
+
+
+# =========================================================
+# LOAD DATA
+# =========================================================
+
+dataset = load_dataset(
+    DATA_DIR,
+    FD_NAME
+)
+
+train_df = dataset['train']
+test_df = dataset['test']
+
+rul_df = dataset['rul']
+
+
+# =========================================================
+# LABELING
+# =========================================================
+
+train_df = add_piecewise_rul(
+    train_df,
+    max_rul=config['max_rul']
+)
+
+
+# =========================================================
+# PREPROCESSING
+# =========================================================
+
+preprocessor = CMAPSSPreprocessor(config)
+
+train_processed = preprocessor.fit_transform(
+    train_df,
+    FD_NAME
+)
+
+test_processed = preprocessor.transform(
+    test_df,
+    FD_NAME
+)
+
+
+# =========================================================
+# BUILD TRAIN DATA
+# =========================================================
+
+X_train = train_processed[
+    preprocessor.feature_columns
+]
+
+y_train = train_processed['RUL']
+
+groups = train_processed['unit_id']
+
+
+# =========================================================
+# BUILD TEST DATA
+# =========================================================
+
+test_last = (
+    test_processed
+    .groupby('unit_id')
+    .last()
+    .reset_index()
+)
+
+X_test = test_last[
+    preprocessor.feature_columns
+]
+
+y_test = rul_df['RUL'].values
+
+
+# =========================================================
+# HYPERPARAMETER TUNING
+# =========================================================
+
+gkf = GroupKFold(n_splits=5)
+
+best_params = tune_xgb(
+    X_train,
+    y_train,
+    groups,
+    gkf
+)
+
+print('\nBest Parameters:')
+print(best_params)
+
+
+# =========================================================
+# FINAL TRAINING
+# =========================================================
+
+model = train_final_model(
+    X_train,
+    y_train,
+    groups,
+    best_params
+)
+
+
+# =========================================================
+# EVALUATION
+# =========================================================
+
+metrics = evaluate_model(
+    model,
+    X_train,
+    y_train,
+    X_test,
+    y_test
+)
+
+print('\nMetrics:')
+print(metrics)
+
+
+# =========================================================
+# FEATURE IMPORTANCE
+# =========================================================
+
+importance = get_feature_importance(
+    model,
+    preprocessor.feature_columns
+)
+
+print('\nTop Features:')
+print(importance)
+
+
+# =========================================================
+# PREDICTION PLOT
+# =========================================================
+
+y_pred = model.predict(X_test)
+
+plot_predictions(
+    y_test,
+    y_pred,
+    FD_NAME
+)
+
+
+# =========================================================
+# SAVE ARTIFACTS
+# =========================================================
+
+artifact_dir = f'artifacts/{FD_NAME}'
+
+os.makedirs(
+    artifact_dir,
+    exist_ok=True
+)
+
+save_pickle(
+    model,
+    f'{artifact_dir}/xgb_model.pkl'
+)
+
+save_pickle(
+    preprocessor,
+    f'{artifact_dir}/preprocessor.pkl'
+)
+
+save_json(
+    preprocessor.feature_columns,
+    f'{artifact_dir}/feature_columns.json'
+)
+
+save_json(
+    metrics,
+    f'{artifact_dir}/metrics.json'
+)
+
+print('\nArtifacts saved successfully.')

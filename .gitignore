@@ -1,0 +1,19 @@
+# RUL project artifacts
+rul_prediction_system/artifacts/
+processed_data/
+rul_prediction_system/data/
+
+# Model files
+*.pkl
+*.joblib
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Notebook cache
+.ipynb_checkpoints/
+
+# Environment
+.env
+venv/

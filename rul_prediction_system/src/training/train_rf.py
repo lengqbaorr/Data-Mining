@@ -1,12 +1,15 @@
+import warnings
+import os
+from pandas.errors import PerformanceWarning
+from scipy.stats import ConstantInputWarning
 from sklearn.model_selection import GroupKFold
 
 from src.data.loader import load_dataset
 from src.data.labeling import add_piecewise_rul
-
 from src.preprocessing.pipeline import CMAPSSPreprocessor
 
-from src.training.tuning import tune_xgb
-from src.training.trainer import train_final_model
+from src.training.tuning import tune_rf 
+from src.training.trainer import train_final_rf_model
 from src.training.evaluate import (
     evaluate_model,
     plot_predictions,
@@ -19,133 +22,65 @@ from src.utils.io import (
     save_json
 )
 
-
-import warnings
-
-from pandas.errors import PerformanceWarning
-from scipy.stats import ConstantInputWarning
-
-import os
-
-
-warnings.filterwarnings(
-    "ignore",
-    category=PerformanceWarning
-)
-
-warnings.filterwarnings(
-    "ignore",
-    category=ConstantInputWarning
-)
-
+warnings.filterwarnings("ignore", category=PerformanceWarning)
+warnings.filterwarnings("ignore", category=ConstantInputWarning)
 
 # =========================================================
 # CONFIG
 # =========================================================
-
 DATA_DIR = 'CMaps'
-FD_NAME = 'FD001'
+FD_NAME = 'FD002' # Thay đổi tùy ý: FD001, FD002, FD003, FD004
 
-config = load_config(
-    f'configs/{FD_NAME.lower()}.yaml'
-)
-
+config = load_config(f'configs/{FD_NAME.lower()}.yaml')
 
 # =========================================================
-# LOAD DATA
+# LOAD DATA & LABELING
 # =========================================================
-
-dataset = load_dataset(
-    DATA_DIR,
-    FD_NAME
-)
-
+dataset = load_dataset(DATA_DIR, FD_NAME)
 train_df = dataset['train']
 test_df = dataset['test']
-
 rul_df = dataset['rul']
 
-
-# =========================================================
-# LABELING
-# =========================================================
-
-train_df = add_piecewise_rul(
-    train_df,
-    max_rul=config['max_rul']
-)
-
+train_df = add_piecewise_rul(train_df, max_rul=config['max_rul'])
 
 # =========================================================
 # PREPROCESSING
 # =========================================================
-
 preprocessor = CMAPSSPreprocessor(config)
-
-train_processed = preprocessor.fit_transform(
-    train_df,
-    FD_NAME
-)
-
-test_processed = preprocessor.transform(
-    test_df,
-    FD_NAME
-)
-
+train_processed = preprocessor.fit_transform(train_df, FD_NAME)
+test_processed = preprocessor.transform(test_df, FD_NAME)
 
 # =========================================================
-# BUILD TRAIN DATA
+# BUILD TRAIN/TEST DATA
 # =========================================================
-
-X_train = train_processed[
-    preprocessor.feature_columns
-]
-
+X_train = train_processed[preprocessor.feature_columns]
 y_train = train_processed['RUL']
-
 groups = train_processed['unit_id']
 
-
-# =========================================================
-# BUILD TEST DATA
-# =========================================================
-
-test_last = (
-    test_processed
-    .groupby('unit_id')
-    .last()
-    .reset_index()
-)
-
-X_test = test_last[
-    preprocessor.feature_columns
-]
-
+test_last = test_processed.groupby('unit_id').last().reset_index()
+X_test = test_last[preprocessor.feature_columns]
 y_test = rul_df['RUL'].values
 
-
 # =========================================================
-# HYPERPARAMETER TUNING
+# HYPERPARAMETER TUNING (RANDOM FOREST)
 # =========================================================
-
 gkf = GroupKFold(n_splits=5)
 
-best_params = tune_xgb(
+# Gọi hàm tune cho RF
+best_params = tune_rf(
     X_train,
     y_train,
     groups,
     gkf
 )
 
-print('\nBest Parameters:')
+print('\nBest Parameters (Random Forest):')
 print(best_params)
 
-
 # =========================================================
-# FINAL TRAINING
+# FINAL TRAINING (RANDOM FOREST)
 # =========================================================
-
-model, split = train_final_model(
+model, split = train_final_rf_model(
     X_train,
     y_train,
     groups,
@@ -153,11 +88,9 @@ model, split = train_final_model(
     valid_size=0.2,
 )
 
-
 # =========================================================
-# EVALUATION (train/valid split = 8:2)
+# EVALUATION 
 # =========================================================
-
 metrics = evaluate_model(
     model,
     split['X_tr'],
@@ -168,65 +101,30 @@ metrics = evaluate_model(
     y_valid=split['y_val'],
 )
 
-print('\nMetrics:')
+print('\nMetrics (Random Forest):')
 print(metrics)
 
-
 # =========================================================
-# FEATURE IMPORTANCE
+# FEATURE IMPORTANCE & PLOT
 # =========================================================
-
-importance = get_feature_importance(
-    model,
-    preprocessor.feature_columns
-)
-
+importance = get_feature_importance(model, preprocessor.feature_columns)
 print('\nTop Features:')
 print(importance)
 
-
-# =========================================================
-# PREDICTION PLOT
-# =========================================================
-
 y_pred = model.predict(X_test)
-
-plot_predictions(
-    y_test,
-    y_pred,
-    FD_NAME
-)
-
+plot_predictions(y_test, y_pred, f'{FD_NAME} - Random Forest')
 
 # =========================================================
 # SAVE ARTIFACTS
 # =========================================================
-
 artifact_dir = f'artifacts/{FD_NAME}'
+os.makedirs(artifact_dir, exist_ok=True)
 
-os.makedirs(
-    artifact_dir,
-    exist_ok=True
-)
+save_pickle(model, f'{artifact_dir}/rf_model.pkl')
+# Không cần lưu lại preprocessor và feature_columns nếu chạy XGB trước đó đã lưu
+# nhưng lưu đè cũng không ảnh hưởng gì, đảm bảo pipeline độc lập.
+save_pickle(preprocessor, f'{artifact_dir}/preprocessor.pkl')
+save_json(preprocessor.feature_columns, f'{artifact_dir}/feature_columns.json')
+save_json(metrics, f'{artifact_dir}/rf_metrics.json')
 
-save_pickle(
-    model,
-    f'{artifact_dir}/xgb_model.pkl'
-)
-
-save_pickle(
-    preprocessor,
-    f'{artifact_dir}/preprocessor.pkl'
-)
-
-save_json(
-    preprocessor.feature_columns,
-    f'{artifact_dir}/feature_columns.json'
-)
-
-save_json(
-    metrics,
-    f'{artifact_dir}/metrics.json'
-)
-
-print('\nArtifacts saved successfully.')
+print('\nRandom Forest Artifacts saved successfully.')

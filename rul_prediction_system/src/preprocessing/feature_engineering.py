@@ -15,6 +15,9 @@ class FeatureEngineer:
     def transform(self, df):
 
         df_feat = df.copy()
+        if 'cycle' in df_feat.columns:
+            df_feat = df_feat.drop(columns=['cycle'])
+
 
         sensor_cols = [
             c for c in df.columns
@@ -88,9 +91,14 @@ class FeatureEngineer:
             index=df_feat.index
         )
 
-        df_feat = pd.concat(
-            [df_feat, feature_df],
+        # 4. Hợp nhất: Chỉ giữ lại 'unit_id', 'RUL' và các cột mới tính
+        # Loại bỏ các cột sensor gốc nếu bạn muốn nhánh ML chỉ dùng feature trích xuất
+        # Hoặc ít nhất là loại bỏ 'cycle'
+        cols_to_keep = [c for c in df_feat.columns if c in ['unit_id', 'RUL']]
+        
+        final_df = pd.concat(
+            [df_feat[cols_to_keep], feature_df], 
             axis=1
         )
 
-        return df_feat.astype('float32', errors='ignore')
+        return final_df.astype('float32', errors='ignore')

@@ -4,8 +4,20 @@ import matplotlib.pyplot as plt
 
 from sklearn.metrics import (
     mean_squared_error,
-    mean_absolute_error
+    mean_absolute_error,
 )
+
+
+def _add_regression_metrics(metrics, prefix, y_true, y_pred):
+
+    metrics[f'{prefix}_rmse'] = np.sqrt(
+        mean_squared_error(y_true, y_pred)
+    )
+
+    metrics[f'{prefix}_mae'] = mean_absolute_error(
+        y_true,
+        y_pred,
+    )
 
 
 def evaluate_model(
@@ -13,36 +25,34 @@ def evaluate_model(
     X_train,
     y_train,
     X_test,
-    y_test
+    y_test,
+    X_valid=None,
+    y_valid=None,
 ):
 
-    y_train_pred = model.predict(X_train)
-    y_test_pred = model.predict(X_test)
+    metrics = {}
 
-    train_rmse = np.sqrt(
-        mean_squared_error(y_train, y_train_pred)
-    )
-
-    test_rmse = np.sqrt(
-        mean_squared_error(y_test, y_test_pred)
-    )
-
-    train_mae = mean_absolute_error(
+    _add_regression_metrics(
+        metrics,
+        'train',
         y_train,
-        y_train_pred
+        model.predict(X_train),
     )
 
-    test_mae = mean_absolute_error(
+    if X_valid is not None and y_valid is not None:
+        _add_regression_metrics(
+            metrics,
+            'valid',
+            y_valid,
+            model.predict(X_valid),
+        )
+
+    _add_regression_metrics(
+        metrics,
+        'test',
         y_test,
-        y_test_pred
+        model.predict(X_test),
     )
-
-    metrics = {
-        'train_rmse': train_rmse,
-        'test_rmse': test_rmse,
-        'train_mae': train_mae,
-        'test_mae': test_mae
-    }
 
     return metrics
 
@@ -53,12 +63,12 @@ def plot_predictions(y_test, y_pred, fd_name):
 
     plt.plot(
         y_test,
-        label='Actual RUL'
+        label='Actual RUL',
     )
 
     plt.plot(
         y_pred,
-        label='Predicted RUL'
+        label='Predicted RUL',
     )
 
     plt.title(f'{fd_name} Predictions')
@@ -71,12 +81,12 @@ def plot_predictions(y_test, y_pred, fd_name):
 def get_feature_importance(
     model,
     feature_names,
-    top_k=10
+    top_k=10,
 ):
 
     importance = pd.Series(
         model.feature_importances_,
-        index=feature_names
+        index=feature_names,
     )
 
     return (

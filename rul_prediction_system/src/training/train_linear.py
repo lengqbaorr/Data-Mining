@@ -15,7 +15,7 @@ from src.utils.io import save_pickle, save_json
 # CONFIGURATION
 # =========================================================
 DATA_DIR = "CMaps"
-FD_NAME = "FD001"
+FD_NAME = "FD004"
 
 print("="*60)
 print(f"[{FD_NAME}] BẮT ĐẦU PIPELINE HUẤN LUYỆN LINEAR REGRESSION")

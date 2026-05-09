@@ -59,7 +59,7 @@ RF_PARAM_GRID_CUSTOM = {
 }
 
 def tune_rf(X_train, y_train, groups, gkf):
-    model = RandomForestRegressor(random_state=42, n_jobs=-1)
+    model = RandomForestRegressor(random_state=42, n_jobs=1)
     
     search = GridSearchCV(
         estimator=model,

@@ -29,7 +29,7 @@ warnings.filterwarnings("ignore", category=ConstantInputWarning)
 # CONFIG
 # =========================================================
 DATA_DIR = 'CMaps'
-FD_NAME = 'FD002' # Thay đổi tùy ý: FD001, FD002, FD003, FD004
+FD_NAME = 'FD004' # Thay đổi tùy ý: FD001, FD002, FD003, FD004
 
 config = load_config(f'configs/{FD_NAME.lower()}.yaml')
 
@@ -123,7 +123,7 @@ os.makedirs(artifact_dir, exist_ok=True)
 save_pickle(model, f'{artifact_dir}/rf_model.pkl')
 # Không cần lưu lại preprocessor và feature_columns nếu chạy XGB trước đó đã lưu
 # nhưng lưu đè cũng không ảnh hưởng gì, đảm bảo pipeline độc lập.
-save_pickle(preprocessor, f'{artifact_dir}/preprocessor.pkl')
+save_pickle(preprocessor, f'{artifact_dir}/rf_preprocessor.pkl')
 save_json(preprocessor.feature_columns, f'{artifact_dir}/feature_columns.json')
 save_json(metrics, f'{artifact_dir}/rf_metrics.json')
 

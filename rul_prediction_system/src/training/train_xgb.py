@@ -44,7 +44,7 @@ warnings.filterwarnings(
 # =========================================================
 
 DATA_DIR = 'CMaps'
-FD_NAME = 'FD001'
+FD_NAME = 'FD004'
 
 config = load_config(
     f'configs/{FD_NAME.lower()}.yaml'
@@ -216,17 +216,17 @@ save_pickle(
 
 save_pickle(
     preprocessor,
-    f'{artifact_dir}/preprocessor.pkl'
+    f'{artifact_dir}/xgb_preprocessor.pkl'
 )
 
 save_json(
     preprocessor.feature_columns,
-    f'{artifact_dir}/feature_columns.json'
+    f'{artifact_dir}/xgb_feature_columns.json'
 )
 
 save_json(
     metrics,
-    f'{artifact_dir}/metrics.json'
+    f'{artifact_dir}/xgb_metrics.json'
 )
 
 print('\nArtifacts saved successfully.')

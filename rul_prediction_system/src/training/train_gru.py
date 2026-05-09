@@ -20,7 +20,7 @@ from src.utils.io import save_pickle, save_json
 # 1. CONFIGURATION
 # =========================================================
 DATA_DIR = 'CMaps'
-FD_NAME = 'FD003'
+FD_NAME = 'FD001'
 SEQUENCE_LENGTH = 30
 
 print(f"[{FD_NAME}] BẮT ĐẦU PIPELINE HUẤN LUYỆN GRU...")
@@ -161,7 +161,7 @@ os.makedirs(artifact_dir, exist_ok=True)
 
 model.save(f'{artifact_dir}/gru_model.h5')
 
-save_pickle(preprocessor, f'{artifact_dir}/dl_preprocessor.pkl')
+save_pickle(preprocessor, f'{artifact_dir}/gru_preprocessor.pkl')
 
 save_json({
     "sequence_length": SEQUENCE_LENGTH,

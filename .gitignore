@@ -1,19 +1,23 @@
-# RUL project artifacts
-rul_prediction_system/artifacts/
-processed_data/
-rul_prediction_system/data/
-
-# Model files
-*.pkl
-*.joblib
-
-# Python cache
+# Python
 __pycache__/
 *.pyc
 
-# Notebook cache
+# Models
+*.pkl
+*.keras
+
+# Generated data
+processed_data/
+artifacts/
+
+# Jupyter cache
 .ipynb_checkpoints/
 
-# Environment
-.env
-venv/
+# OS
+.DS_Store
+Thumbs.db
+~$*
+
+# Optional large files
+*.pdf
+*.png
